@@ -1,0 +1,64 @@
+from datetime import datetime, timedelta
+
+def parse_time(time_str):
+    return datetime.strptime(time_str, "%m/%d/%Y %I:%M %p")
+
+def analyze_file(file_path):
+    # Assuming the input file is a CSV file with columns separated by tabs
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    # Dictionary to store employee data
+    employees = {}
+
+    # Iterate through each line in the file
+    for line in lines[1:]:  # Skip the header line
+        # Split the line into columns
+        columns = line.strip().split('\t')
+
+        # Extract relevant information
+        start_time = parse_time(columns[0])
+        end_time = parse_time(columns[1])
+        employee_name = columns[5]
+        hours_worked = timedelta(hours=float(columns[2].split(':')[0]), minutes=float(columns[2].split(':')[1]))
+
+        # Store the data in the dictionary
+        if employee_name not in employees:
+            employees[employee_name] = {'shifts': []}
+        
+        employees[employee_name]['shifts'].append({'start_time': start_time, 'end_time': end_time, 'hours_worked': hours_worked})
+
+    # Analyze the data
+    for employee, data in employees.items():
+        consecutive_days = 1
+        max_consecutive_days = 1
+        previous_end_time = data['shifts'][0]['end_time']
+        total_hours_single_shift = 0
+
+        for shift in data['shifts'][1:]:
+            # Check consecutive days
+            if (shift['start_time'] - previous_end_time).days == 1:
+                consecutive_days += 1
+                max_consecutive_days = max(max_consecutive_days, consecutive_days)
+            else:
+                consecutive_days = 1
+
+            # Check time between shifts
+            time_between_shifts = shift['start_time'] - previous_end_time
+            if 1 < time_between_shifts.total_seconds() / 3600 < 10:
+                print(f"{employee} has less than 10 hours between shifts on {shift['start_time']}")
+
+            # Check hours worked in a single shift
+            total_hours_single_shift = (shift['end_time'] - shift['start_time']).total_seconds() / 3600
+            if total_hours_single_shift > 14:
+                print(f"{employee} has worked for more than 14 hours on {shift['start_time']}")
+
+            previous_end_time = shift['end_time']
+
+        # Check 7 consecutive days
+        if max_consecutive_days >= 7:
+            print(f"{employee} has worked for 7 consecutive days.")
+
+# Assume the input file is named "time_data.txt"
+file_path = "time_data.txt"
+analyze_file(file_path)
